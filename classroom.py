@@ -1,3 +1,5 @@
+import ray
+
 class ClassroomHandler:
 	def __init__(self, google):
 		self.google = google
@@ -12,7 +14,8 @@ class ClassroomHandler:
 			request = self.service.courses().list_next(request, response)
 		return courses
 
-	def get_assignments(self, course):
+	@ray.remote
+	def get_courseworks(self, course):
 		assignments = []
 		request = self.service.courses().courseWork().list(courseId = course["id"], pageSize = self.google.page_size, orderBy = "updateTime asc")
 		while request:
@@ -21,6 +24,7 @@ class ClassroomHandler:
 			request = self.service.courses().courseWork().list_next(request, response)
 		return assignments
 	
+	@ray.remote
 	def get_announcements(self, course):
 		announcements = []
 		request = self.service.courses().announcements().list(courseId = course["id"], 
