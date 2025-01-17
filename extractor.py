@@ -23,6 +23,7 @@ class ExerciseExtractor:
 		self.crop_stitch_gap_end = crop_stitch_gap_end
 		self.quality = quality
 		self.regex = regex
+		self.occurence = {}
 
 	def _get_total_image_size(self, images):
 		widths, heights = zip(*(image.size for image in images))
@@ -35,10 +36,14 @@ class ExerciseExtractor:
 			offset += image.size[1]
 		return final
 	
-	def _find_text_y_coord(self, page, text):
+	def _find_text_y_coord(self, page, text, occurence):
+		current = 0
 		for obj in page.extract_words():
 			if obj["text"] == text:
-				return obj["top"]
+				if current >= occurence:
+					return obj["top"]
+				else:
+					current += 1
 
 	def _find_top_y_coord(self, page):
 		obj = page.extract_words()[0]
@@ -62,7 +67,6 @@ class ExerciseExtractor:
 		overflow = None
 		for i, page in enumerate(pdf.pages):
 			matches = re.findall(self.regex, page.extract_text())
-
 			if overflow:
 				if len(matches) <= 0:
 					overflow.end = (i, 
@@ -70,24 +74,29 @@ class ExerciseExtractor:
 					if len(pdf.pages) <= i + 1:
 						exercises.append(overflow)
 						overflow = None
-				elif matches[0] in page.extract_words()[0]:
-					overflow.end = (i, self._find_text_y_coord(page, matches[0]))
+				elif matches[0] in page.extract_words()[0]["text"]:
 					exercises.append(overflow)
 					overflow = None
-				else:
-					continue
 
 			for j, text in enumerate(matches):
-				y = self._find_text_y_coord(page, text)
+				if not text in self.occurence:
+					self.occurence[text] = 0
+				y = self._find_text_y_coord(page, text, self.occurence[text])
 				if y:
 					start = (i, y)
 					exercise = Exercise(start, None)
 					
-					if len(matches) <= j + 1 and len(pdf.pages) > i + 1:
+					if len(matches) <= j + 1:
 						exercise.end = (i, self._find_bottom_y_coord(page))
-						overflow = exercise
+						if len(pdf.pages) <= i + 1:
+							exercises.append(exercise)
+						else:
+							overflow = exercise
 					else:
-						exercise.end = (i, self._find_text_y_coord(page, matches[j + 1]))
+						if matches[j] == matches[j + 1]:
+							self.occurence[text] += 1
+						exercise.end = (i, self._find_text_y_coord(page, 
+							matches[j + 1], self.occurence[text]))
 						exercises.append(exercise)
 		return exercises
 
