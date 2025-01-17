@@ -90,8 +90,6 @@ class ExerciseExtractor:
 			page_text = page.extract_text()
 			if len(page.extract_words()) > 0:
 				matches = re.findall(self.regex, page_text)
-				print(matches)
-				print(page_text)
 
 				if i == 0 and include_title:
 					try:
@@ -141,6 +139,13 @@ class ExerciseExtractor:
 			exercises.append(exercise)
 		return exercises
 
+	def _is_pdf_complex(self, pdf):
+		for page in pdf.pages:
+			if len(page.lines):
+				return True
+		return False
+
+
 	def extract(self, pdf, exercise):
 		pages = pdf.pages[exercise.start[0]:exercise.end[0] + 1]
 		images = []
@@ -169,18 +174,21 @@ class ExerciseExtractor:
 			print()
 			print(f"Opening PDF: {i+1}/{len(paths)} ({round(((i+1)/len(paths))*100, 2)}%): {path}")
 			with pdfplumber.open(path) as pdf:
-				raw_exercises = self._get_all_exercises(pdf, include_titles)
-				for j, raw_exercise in enumerate(raw_exercises):
-					try:
-						exercises.append(self.extract(pdf, raw_exercise))
-						print(f"Extracted exercise: {j+1}/{len(raw_exercises)} ({round(((j+1)/len(raw_exercises))*100, 2)}%)")
-					except ExtractionError:
-						print()
-						print(f"Extraction error at {j+1}: {pdf.metadata['Title']}")
-						print()
-				if len(exercises) <= 0:
-					exercises += self._extract_all_pages(pdf)
-				elif len(exercises) <= 1 and exercises[0].title:
-					del exercises[0]
-					exercises += self._extract_all_pages(pdf)
+				if self._is_pdf_complex(pdf):
+					exercises = self._extract_all_pages(pdf)
+				else:
+					raw_exercises = self._get_all_exercises(pdf, include_titles)
+					for j, raw_exercise in enumerate(raw_exercises):
+						try:
+							exercises.append(self.extract(pdf, raw_exercise))
+							print(f"Extracted exercise: {j+1}/{len(raw_exercises)} ({round(((j+1)/len(raw_exercises))*100, 2)}%)")
+						except ExtractionError:
+							print()
+							print(f"Extraction error at {j+1}: {pdf.metadata['Title']}")
+							print()
+					if len(exercises) <= 0:
+						exercises += self._extract_all_pages(pdf)
+					elif len(exercises) <= 1 and exercises[0].title:
+						del exercises[0]
+						exercises += self._extract_all_pages(pdf)
 		return exercises
