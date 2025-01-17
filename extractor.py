@@ -102,7 +102,6 @@ class ExerciseExtractor:
 								True
 							)
 						)
-						print(exercises)
 					except IndexError:
 						pass
 
@@ -110,17 +109,13 @@ class ExerciseExtractor:
 					if len(matches) <= 0:
 						overflow.end = (i, 
 							self._find_bottom_y_coord(page))
-						if len(pdf.pages) <= i + 1:
-							exercises.append(overflow)
-							overflow = None
-					elif matches[0] in page.extract_words()[0]["text"]:
-						exercises.append(overflow)
-						overflow = None
-
+					else:
+						overflow.end = (i, 
+							self._find_text_y_coord(page, matches[0]))
+					exercises.append(overflow)
+					overflow = None
 				for j, text in enumerate(matches):
-					if not text in self.occurence:
-						self.occurence[text] = 0
-					y = self._find_text_y_coord(page, text, self.occurence[text])
+					y = self._find_text_y_coord(page, text, matches[:j].count(text))
 					if y:
 						start = (i, y)
 						exercise = Exercise(start, None)
@@ -132,10 +127,9 @@ class ExerciseExtractor:
 							else:
 								overflow = exercise
 						else:
-							if matches[j] == matches[j + 1]:
-								self.occurence[text] += 1
+							target = matches[j + 1]
 							exercise.end = (i, self._find_text_y_coord(page, 
-								matches[j + 1], self.occurence[text]))
+								target, matches[:j].count(target)))
 							exercises.append(exercise)
 		return exercises
 
