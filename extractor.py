@@ -20,7 +20,7 @@ class ExerciseExtractor:
 			crop_stitch_gap_start = 0, 
 			crop_stitch_gap_end = 0, 
 			quality = 300, 
-			regex = r"\b([1-9]\d*\.)[^\S\r\n]",
+			regex = r"^[1-9]\d*\.",
 			title_regex = r"\d{2}\.\d{2}\."
 		):
 		self.crop_start_offset = crop_start_offset
@@ -28,9 +28,8 @@ class ExerciseExtractor:
 		self.crop_stitch_gap_start = crop_stitch_gap_start
 		self.crop_stitch_gap_end = crop_stitch_gap_end
 		self.quality = quality
-		self.regex = regex
+		self.regex = re.compile(regex, re.MULTILINE)
 		self.title_regex = title_regex
-		self.occurence = {}
 
 	def _get_total_image_size(self, images):
 		widths, heights = zip(*(image.size for image in images))
@@ -46,7 +45,7 @@ class ExerciseExtractor:
 	def _find_text_y_coord(self, page, text, occurence = 0, light_match = False, location = "top"):
 		current = 0
 		for obj in page.extract_words():
-			if obj["text"] == text or (light_match and text in obj["text"]):
+			if (obj["text"] == text or obj["text"][:len(text)] == text) or (light_match and text in obj["text"]):
 				if current >= occurence:
 					return obj[location]
 				else:
@@ -91,6 +90,8 @@ class ExerciseExtractor:
 			page_text = page.extract_text()
 			if len(page.extract_words()) > 0:
 				matches = re.findall(self.regex, page_text)
+				print(matches)
+				print(page_text)
 
 				if i == 0 and include_title:
 					try:

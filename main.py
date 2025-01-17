@@ -73,6 +73,6 @@ extractor = ExerciseExtractor(-30, 0, 2, 15)
 merger = ExerciseMerger()
 
 #docs = choose_docs(classroom, drive, pdfmng)
-docs = ["example3.pdf"]
+docs = ["example0.pdf"]
 
 merge_docs_to_pdf(extractor, merger, docs, "summary_all.pdf")
