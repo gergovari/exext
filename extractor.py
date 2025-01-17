@@ -66,7 +66,7 @@ class ExerciseExtractor:
 		except IndexError:
 			return None
 
-	def _crop_page(self, page, start, end, offset_override = (None, None)):
+	def _crop_page(self, page, start, end, prev_end = 0, next_start = None, offset_override = (None, None)):
 		try:
 			start += offset_override[0] if offset_override[0] != None else self.crop_start_offset
 			end += offset_override[1] if offset_override[1] != None else self.crop_end_offset
@@ -74,8 +74,17 @@ class ExerciseExtractor:
 			raise ExtractionError
 		if start < 0:
 			start = 0
+		elif start < prev_end:
+			start = prev_end
+
+		if next_start == None:
+			next_start = end
+
 		if end > page.height:
 			end = page.height
+		elif end > next_start:
+			end = next_start
+
 		try:
 			return page.crop((0, start, page.width, end))
 		except:
@@ -148,23 +157,36 @@ class ExerciseExtractor:
 		return False
 
 
-	def extract(self, pdf, exercise):
+	def extract(self, pdf, exercise, prev_exercise = None, next_exercise = None):
 		pages = pdf.pages[exercise.start[0]:exercise.end[0] + 1]
 		images = []
+
+		prev_end = 0
+		if prev_exercise and next_exercise.end[0] == exercise.start[0]:
+			prev_end = prev_exercise.end[1]
+		next_start = None
+		if next_exercise and next_exercise.start[0] == exercise.end[0]:
+			next_start = next_exercise.start[1]
+
 		for i, page in enumerate(pages):
 			if len(pages) > 1:
 				if i == 0:
 					cropped = self._crop_page(page, 
-						exercise.start[1], 
-						self._find_bottom_y_coord(page), (None, self.crop_stitch_gap_start))
+						exercise.start[1], self._find_bottom_y_coord(page), 
+						0, next_start,
+						(None, self.crop_stitch_gap_start))
 				elif i + 1 >= len(pages):
 					cropped = self._crop_page(page, 
-						self._find_top_y_coord(page), 
-						exercise.end[1], (0, self.crop_stitch_gap_end))
+						self._find_top_y_coord(page), exercise.end[1], 
+						prev_end, next_start,
+						(0, self.crop_stitch_gap_end))
 				else:
 					cropped = page
 			else:
-				cropped = self._crop_page(page, exercise.start[1], exercise.end[1])
+				
+				cropped = self._crop_page(page, 
+					exercise.start[1], exercise.end[1], 
+					prev_end, next_start)
 			images.append(cropped.to_image(resolution=self.quality).original)
 		exercise.image = self._stitch_images(images)
 		return exercise
