@@ -48,14 +48,7 @@ class ClassroomHandler:
 			except KeyError:
 				continue
 		return files
-	def _files_to_docs(self, files):
-		docs = []
-		print()
-		for i, file in enumerate(files):
-			print(f"Downloading {i+1}/{len(files)} ({round(((i+1)/len(files))*100, 2)}%): {file['title']}")
-			docs.append(pdfmng.blob_to_pdf(drive.get_file_as_pdf(file)))
-		return docs
-	def assignments_to_docs(self, assignments):
-		return self._files_to_docs(self._materials_to_files(self._assignments_to_materials(assignments)))
+	def assignments_to_files(self, assignments):
+		return self._materials_to_files(self._assignments_to_materials(assignments))
 
 

@@ -14,5 +14,14 @@ class DriveHandler:
 			print("Export failed, retrying...")
 			self._gdoc_to_pdf(gdoc)
 
-	def get_file_as_pdf(self, file):
+	def _file_to_pdf(self, file):
 		return self._gdoc_to_pdf(self._file_to_gdoc(file))
+
+	def files_to_pdfs(self, files):
+		docs = []
+		print()
+		for i, file in enumerate(files):
+			print(f"Downloading {i+1}/{len(files)} ({round(((i+1)/len(files))*100, 2)}%): {file['title']}")
+			docs.append(self._file_to_pdf(file))
+		return docs
+
