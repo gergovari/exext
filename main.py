@@ -72,7 +72,7 @@ pdfmng = PDFManager()
 extractor = ExerciseExtractor(-30, 0, 2, 15)
 merger = ExerciseMerger()
 
-#docs = choose_docs(classroom, drive, pdfmng)
-docs = ["example2.pdf"]
+docs = choose_docs(classroom, drive, pdfmng)
+#docs = ["example4.pdf"]
 
 merge_docs_to_pdf(extractor, merger, docs, "summary_all.pdf")
