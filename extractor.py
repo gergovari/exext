@@ -3,6 +3,9 @@ from PIL import Image
 from dataclasses import dataclass
 import re
 
+class ExtractionError(Exception):    
+	pass
+
 @dataclass
 class Exercise:
 	start: (int, int)
@@ -17,7 +20,7 @@ class ExerciseExtractor:
 			crop_stitch_gap_start = 0, 
 			crop_stitch_gap_end = 0, 
 			quality = 300, 
-			regex = r"\b([1-9]\d*\.)\s",
+			regex = r"\b([1-9]\d*\.)[^\S\r\n]",
 			title_regex = r"\d{2}\.\d{2}\."
 		):
 		self.crop_start_offset = crop_start_offset
@@ -58,8 +61,11 @@ class ExerciseExtractor:
 		return obj["bottom"]
 
 	def _crop_page(self, page, start, end, offset_override = (None, None)):
-		start += offset_override[0] if offset_override[0] != None else self.crop_start_offset
-		end += offset_override[1] if offset_override[1] != None else self.crop_end_offset
+		try:
+			start += offset_override[0] if offset_override[0] != None else self.crop_start_offset
+			end += offset_override[1] if offset_override[1] != None else self.crop_end_offset
+		except:
+			raise ExtractionError
 		if start < 0:
 			start = 0
 		if end > page.height:
@@ -103,7 +109,7 @@ class ExerciseExtractor:
 				if y:
 					start = (i, y)
 					exercise = Exercise(start, None)
-					
+
 					if len(matches) <= j + 1:
 						exercise.end = (i, self._find_bottom_y_coord(page))
 						if len(pdf.pages) <= i + 1:
@@ -144,6 +150,9 @@ class ExerciseExtractor:
 		for path in paths:
 			with pdfplumber.open(path) as pdf:
 				raw_exercises = self._get_all_exercises(pdf, include_titles)
-				for raw_exercise in raw_exercises:
-					exercises.append(self.extract(pdf, raw_exercise))
+				for i, raw_exercise in enumerate(raw_exercises):
+					try:
+						exercises.append(self.extract(pdf, raw_exercise))
+					except ExtractionError:
+						print(f"Extraction error: {pdf.pages[0].extract_text()[:100]}")
 		return exercises
