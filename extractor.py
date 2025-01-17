@@ -2,8 +2,9 @@ import pdfplumber
 from PIL import Image
 
 class ExerciseExtractor:
-	def __init__(self, path, crop_start_offset = 0, crop_end_offset = 0):
+	def __init__(self, path, start = 1, crop_start_offset = 0, crop_end_offset = 0):
 		self.path = path
+		self.start = start
 		self.crop_start_offset = crop_start_offset
 		self.crop_end_offset = crop_end_offset
 
@@ -69,10 +70,10 @@ class ExerciseExtractor:
 			if len(images) > 0:
 				return self._stitch_images(images)
 	
-	def extract_all():
+	def extract_all(self):
 		images = []
 		# FIXME: can't account for missing numbers or weird schemes...
-		for i in range((self.start - 1) + self.get_exercise_count(self.start)):
+		for i in range((self.start - 1) + self.get_exercise_count()):
 			image = self.extract(i + 1)
 			if image:
 				images.append(image)

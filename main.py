@@ -1,6 +1,7 @@
 from extractor import ExerciseExtractor
 
-start = 1
-extractor = ExerciseExtractor("example.pdf", -30)
+extractor = ExerciseExtractor("example.pdf", 1, -30)
 
 images = extractor.extract_all()
+
+
