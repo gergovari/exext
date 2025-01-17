@@ -1,4 +1,5 @@
 import ray
+import itertools
 
 class ClassroomHandler:
 	def __init__(self, google):
@@ -10,49 +11,47 @@ class ClassroomHandler:
 		request = self.service.courses().list(pageSize=self.google.page_size)
 		while request:
 			response = request.execute()
-			courses += response.get("courses", [])
+			for course in response.get("courses", []):
+				courses.append(course)
 			request = self.service.courses().list_next(request, response)
 		return courses
-
-	@ray.remote
-	def get_courseworks(self, course):
-		assignments = []
-		request = self.service.courses().courseWork().list(courseId = course["id"], pageSize = self.google.page_size, orderBy = "updateTime asc")
-		while request:
-			response = request.execute()
-			assignments += response.get("courseWork", [])
-			request = self.service.courses().courseWork().list_next(request, response)
-		return assignments
 	
-	@ray.remote
-	def get_announcements(self, course):
-		announcements = []
-		request = self.service.courses().announcements().list(courseId = course["id"], 
-								      pageSize=self.google.page_size,
-								      orderBy = "updateTime asc")
+	@ray.remote(num_returns="dynamic")
+	def get_assignments(self, course):
+		coursework_gen = ray.get(self._get_coursework.remote(self, course))
+		announcements_gen = ray.get(self._get_announcements.remote(self, course))
+		for coursework, announcement in itertools.zip_longest(coursework_gen, announcements_gen):
+			if coursework:
+				yield ray.get(coursework)
+			if announcement:
+				yield ray.get(announcement)
+
+	@ray.remote(num_returns="dynamic")
+	def _get_coursework(self, course):
+		request = self.service.courses().courseWork().list(courseId = course["id"], 
+								   pageSize = self.google.page_size, 
+								   orderBy = "updateTime asc")
 		while request:
 			response = request.execute()
-			announcements += response.get("announcements", [])
+			for coursework in response.get("courseWork", []):
+				yield coursework
+			request = self.service.courses().courseWork().list_next(request, response)
+
+	@ray.remote(num_returns="dynamic")
+	def _get_announcements(self, course):
+		request = self.service.courses().courseWork().list(courseId = course["id"], 
+								   pageSize = self.google.page_size, 
+								   orderBy = "updateTime asc")
+		while request:
+			response = request.execute()
+			for announcements in response.get("announcements", []):
+				yield announcements
 			request = self.service.courses().announcements().list_next(request, response)
-		return announcements
-
-	def _assignments_to_materials(self, assignments):
-		materials = []
-		for assignment in assignments:
-			try:
-				materials += assignment["materials"]
-			except KeyError:
-				continue
-		return materials
-	def _materials_to_files(self, materials):
-		files = []
-		for material in materials:
-			try:
-				files.append(material["driveFile"]["driveFile"])
-			except KeyError:
-				continue
-		return files
-	def assignments_to_files(self, assignments):
-		return self._materials_to_files(self._assignments_to_materials(assignments))
-
+	
+	@ray.remote(num_returns="dynamic")
+	def assignment_to_files(self, assignment):
+		for material in assignment.get("materials", []):
+			file = material.get("driveFile", {}).get("driveFile")
+			if file:
+				yield file
 
