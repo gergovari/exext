@@ -9,14 +9,14 @@ class ExerciseExtractor:
 		self.crop_end_offset = crop_end_offset
 
 	def _get_total_image_size(self, images):
-		widths, heights = zip(*(image.original.size for image in images))
+		widths, heights = zip(*(image.size for image in images))
 		return (max(widths), sum(heights))
 	def _stitch_images(self, images):
 		final = Image.new("RGB", self._get_total_image_size(images))
 		offset = 0
 		for image in images:
-			final.paste(image.original, (0, offset))
-			offset += image.original.size[1]
+			final.paste(image, (0, offset))
+			offset += image.size[1]
 		return final
 
 	def _find_text_y_coord(self, page, text):
@@ -64,9 +64,9 @@ class ExerciseExtractor:
 						)).to_image(resolution=300) 
 					if can_continue:
 						already_started = True
-						images.append(image)
+						images.append(image.original)
 					else:
-						return image
+						return image.original
 			if len(images) > 0:
 				return self._stitch_images(images)
 	
