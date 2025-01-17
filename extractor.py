@@ -7,6 +7,8 @@ import re
 class Exercise:
 	start: (int, int)
 	end: (int, int)
+	title: bool = False
+	image: Image = None
 	
 class ExerciseExtractor:
 	def __init__(self, 
@@ -15,7 +17,8 @@ class ExerciseExtractor:
 			crop_stitch_gap_start = 0, 
 			crop_stitch_gap_end = 0, 
 			quality = 300, 
-			regex = r"\b([1-9]\d*\.)\s"
+			regex = r"\b([1-9]\d*\.)\s",
+			title_regex = r"\d{2}\.\d{2}\."
 		):
 		self.crop_start_offset = crop_start_offset
 		self.crop_end_offset = crop_end_offset
@@ -23,6 +26,7 @@ class ExerciseExtractor:
 		self.crop_stitch_gap_end = crop_stitch_gap_end
 		self.quality = quality
 		self.regex = regex
+		self.title_regex = title_regex
 		self.occurence = {}
 
 	def _get_total_image_size(self, images):
@@ -36,10 +40,10 @@ class ExerciseExtractor:
 			offset += image.size[1]
 		return final
 	
-	def _find_text_y_coord(self, page, text, occurence):
+	def _find_text_y_coord(self, page, text, occurence = 0, light_match = False):
 		current = 0
 		for obj in page.extract_words():
-			if obj["text"] == text:
+			if obj["text"] == text or (light_match and text in obj["text"]):
 				if current >= occurence:
 					return obj["top"]
 				else:
@@ -62,11 +66,25 @@ class ExerciseExtractor:
 			end = page.height
 		return page.crop((0, start, page.width, end))
 
-	def _get_all_exercises(self, pdf):
+	def _get_all_exercises(self, pdf, include_title = False):
 		exercises = []
 		overflow = None
 		for i, page in enumerate(pdf.pages):
 			matches = re.findall(self.regex, page.extract_text())
+
+			if i == 0 and include_title:
+				try:
+					title = re.findall(self.title_regex, page.extract_text())[0]
+					exercises.append(
+						Exercise(
+							(0, self._find_text_y_coord(page, title, 0, True)), 
+							(0, self._find_text_y_coord(page, matches[0])),
+							True
+						)
+					)
+				except IndexError:
+					pass
+
 			if overflow:
 				if len(matches) <= 0:
 					overflow.end = (i, 
@@ -118,13 +136,14 @@ class ExerciseExtractor:
 			else:
 				cropped = self._crop_page(page, exercise.start[1], exercise.end[1])
 			images.append(cropped.to_image(resolution=self.quality).original)
-		return self._stitch_images(images)
+		exercise.image = self._stitch_images(images)
+		return exercise
 	
-	def extract_all(self, paths):
-		images = []
+	def extract_all(self, paths, include_titles = False):
+		exercises = []
 		for path in paths:
 			with pdfplumber.open(path) as pdf:
-				exercises = self._get_all_exercises(pdf)
-				for exercise in exercises:
-					images.append(self.extract(pdf, exercise))
-		return images
+				raw_exercises = self._get_all_exercises(pdf, include_titles)
+				for raw_exercise in raw_exercises:
+					exercises.append(self.extract(pdf, raw_exercise))
+		return exercises
