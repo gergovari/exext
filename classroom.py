@@ -20,3 +20,14 @@ class ClassroomHandler:
 			assignments += response.get("courseWork", [])
 			request = self.service.courses().courseWork().list_next(request, response)
 		return assignments
+	
+	def get_announcements(self, course):
+		announcements = []
+		request = self.service.courses().announcements().list(courseId = course["id"], 
+								      pageSize=self.google.page_size,
+								      orderBy = "updateTime asc")
+		while request:
+			response = request.execute()
+			announcements += response.get("announcements", [])
+			request = self.service.courses().announcements().list_next(request, response)
+		return announcements

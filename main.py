@@ -36,8 +36,8 @@ def files_to_docs(files):
 
 # TODO: filter by title
 def filter_assignments(assignments):
-	cutoff = datetime(2022, 9, 1)
-	return [assignment for assignment in assignments if parser.parse(assignment["creationTime"]).timestamp()>= cutoff.timestamp()]
+	cutoff = datetime(2023, 6, 1)
+	return [assignment for assignment in assignments if parser.parse(assignment["creationTime"]).timestamp() >= cutoff.timestamp()]
 
 def choose_elem(elems):
 	for i, elem in enumerate(elems):
@@ -53,7 +53,7 @@ def choose_course():
 	return choose_elem(courses)
 def choose_docs(classroom, drive, pdfmng):
 	course = choose_course()
-	assignments = filter_assignments(classroom.get_assignments(course))
+	assignments = filter_assignments(classroom.get_assignments(course) + classroom.get_announcements(course))
 	print(f"Assignments: {len(assignments)}")
 	materials = assignments_to_materials(assignments)
 	files = materials_to_files(materials)
@@ -61,7 +61,7 @@ def choose_docs(classroom, drive, pdfmng):
 
 def merge_docs_to_pdf(extractor, merger, docs, output):
 	exercises = extractor.extract_all(docs, include_titles = True)
-	canvas = merger.summary(output, exercises)
+	canvas = merger.practice(output, exercises)
 	canvas.save()
 
 google = GoogleHandler()

@@ -21,6 +21,7 @@ class ExerciseMerger:
 				title = exercise.image
 				continue
 			c.drawImage(bg, 0, 0, *(c._pagesize))
+			height = 0
 			if title:
 				height = title.size[1] * (c._pagesize[1]/image.size[0])
 				self._draw_exercise(c, title, c._pagesize[1] - height)
@@ -28,7 +29,6 @@ class ExerciseMerger:
 			height += image.size[1] * (c._pagesize[1]/image.size[0])
 			self._draw_exercise(c, image, c._pagesize[1] - height)
 			c.showPage()
-			height = 0
 		return c
 	
 	def summary(self, path, exercises):
