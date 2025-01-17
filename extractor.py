@@ -138,11 +138,13 @@ class ExerciseExtractor:
 			exercise = Exercise(None, None, False, self._crop_all(page).to_image(resolution=self.quality).original)
 			exercises.append(exercise)
 		return exercises
-
-	def _is_pdf_complex(self, pdf):
-		for page in pdf.pages:
-			if len(page.lines):
-				return True
+	
+	def _is_pdf_complex(self, exercises):
+		threshold = 10
+		for a in exercises:
+			for b in exercises:
+				if a.start[0] == b.start[0] and abs(a.start[1] - b.start[1]) <= threshold and a != b:
+					return True
 		return False
 
 
@@ -172,23 +174,31 @@ class ExerciseExtractor:
 		for i, path in enumerate(paths):
 			print()
 			print()
-			print(f"Opening PDF: {i+1}/{len(paths)} ({round(((i+1)/len(paths))*100, 2)}%): {path}")
 			with pdfplumber.open(path) as pdf:
-				if self._is_pdf_complex(pdf):
-					exercises = self._extract_all_pages(pdf)
-				else:
+				print(f"Opening PDF: {i+1}/{len(paths)} ({round(((i+1)/len(paths))*100, 2)}%): {pdf.metadata['Title']}")
+				try:
 					raw_exercises = self._get_all_exercises(pdf, include_titles)
-					for j, raw_exercise in enumerate(raw_exercises):
-						try:
-							exercises.append(self.extract(pdf, raw_exercise))
-							print(f"Extracted exercise: {j+1}/{len(raw_exercises)} ({round(((j+1)/len(raw_exercises))*100, 2)}%)")
-						except ExtractionError:
-							print()
-							print(f"Extraction error at {j+1}: {pdf.metadata['Title']}")
-							print()
-					if len(exercises) <= 0:
+					if self._is_pdf_complex(raw_exercises):
+						print("PDF is too complex to parse!")
 						exercises += self._extract_all_pages(pdf)
-					elif len(exercises) <= 1 and exercises[0].title:
-						del exercises[0]
-						exercises += self._extract_all_pages(pdf)
+					else:
+						for j, raw_exercise in enumerate(raw_exercises):
+							try:
+								exercises.append(self.extract(pdf, raw_exercise))
+								print(f"Extracted exercise: {j+1}/{len(raw_exercises)} ({round(((j+1)/len(raw_exercises))*100, 2)}%)")
+							except ExtractionError:
+								print()
+								print(f"Extraction error at {j+1}")
+								print()
+						if len(exercises) <= 0:
+							print("Can't detect exercises in PDF!")
+							exercises += self._extract_all_pages(pdf)
+						elif len(exercises) <= 1 and exercises[0].title:
+							print("Can't detect exercises in PDF, only title!")
+							del exercises[0]
+							exercises += self._extract_all_pages(pdf)
+				except ExtractionError:
+					print()
+					print(f"Extraction error at {pdf.metadata['Title']}")
+					print()
 		return exercises
