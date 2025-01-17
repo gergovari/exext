@@ -43,12 +43,12 @@ class ExerciseExtractor:
 			offset += image.size[1]
 		return final
 	
-	def _find_text_y_coord(self, page, text, occurence = 0, light_match = False):
+	def _find_text_y_coord(self, page, text, occurence = 0, light_match = False, location = "top"):
 		current = 0
 		for obj in page.extract_words():
 			if obj["text"] == text or (light_match and text in obj["text"]):
 				if current >= occurence:
-					return obj["top"]
+					return obj[location]
 				else:
 					current += 1
 
@@ -98,10 +98,11 @@ class ExerciseExtractor:
 						exercises.append(
 							Exercise(
 								(0, self._find_text_y_coord(page, title, 0, True)), 
-								(0, self._find_text_y_coord(page, matches[0])),
+								(0, self._find_text_y_coord(page, title, 0, True, "bottom")),
 								True
 							)
 						)
+						print(exercises)
 					except IndexError:
 						pass
 
@@ -180,7 +181,7 @@ class ExerciseExtractor:
 						print(f"Extracted exercise: {j+1}/{len(raw_exercises)} ({round(((j+1)/len(raw_exercises))*100, 2)}%)")
 					except ExtractionError:
 						print()
-						print(f"Extraction error at {j}: {pdf.metadata['Title']}")
+						print(f"Extraction error at {j+1}: {pdf.metadata['Title']}")
 						print()
 				if len(exercises) <= 0:
 					exercises += self._extract_all_pages(pdf)
