@@ -36,7 +36,7 @@ def files_to_docs(files):
 
 # TODO: filter by title
 def filter_assignments(assignments):
-	cutoff = datetime(2023, 6, 1)
+	cutoff = datetime(2022, 9, 1)
 	return [assignment for assignment in assignments if parser.parse(assignment["creationTime"]).timestamp()>= cutoff.timestamp()]
 
 def choose_elem(elems):
@@ -72,7 +72,7 @@ pdfmng = PDFManager()
 extractor = ExerciseExtractor(-30, 0, 2, 15)
 merger = ExerciseMerger()
 
-docs = choose_docs(classroom, drive, pdfmng)
-#docs = ["example4.pdf"]
+#docs = choose_docs(classroom, drive, pdfmng)
+docs = ["example3.pdf"]
 
 merge_docs_to_pdf(extractor, merger, docs, "summary_all.pdf")

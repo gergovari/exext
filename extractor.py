@@ -179,4 +179,7 @@ class ExerciseExtractor:
 						print()
 				if len(exercises) <= 0:
 					exercises += self._extract_all_pages(pdf)
+				elif len(exercises) <= 1 and exercises[0].title:
+					del exercises[0]
+					exercises += self._extract_all_pages(pdf)
 		return exercises
