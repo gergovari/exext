@@ -28,13 +28,15 @@ def materials_to_files(materials):
 	return files
 def files_to_docs(files):
 	docs = []
-	for file in files:
+	print()
+	for i, file in enumerate(files):
+		print(f"Downloading {i+1}/{len(files)} ({round(((i+1)/len(files))*100, 2)}%): {file['title']}")
 		docs.append(pdfmng.blob_to_pdf(drive.get_file_as_pdf(file)))
 	return docs
 
 # TODO: filter by title
 def filter_assignments(assignments):
-	cutoff = datetime(2022, 9, 1)
+	cutoff = datetime(2023, 6, 1)
 	return [assignment for assignment in assignments if parser.parse(assignment["creationTime"]).timestamp()>= cutoff.timestamp()]
 
 def choose_elem(elems):
@@ -52,6 +54,7 @@ def choose_course():
 def choose_docs(classroom, drive, pdfmng):
 	course = choose_course()
 	assignments = filter_assignments(classroom.get_assignments(course))
+	print(f"Assignments: {len(assignments)}")
 	materials = assignments_to_materials(assignments)
 	files = materials_to_files(materials)
 	return files_to_docs(files)

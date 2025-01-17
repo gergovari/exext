@@ -8,7 +8,11 @@ class DriveHandler:
 		return self.service.files().copy(fileId = material["id"], 
 						body = { "mimeType": "application/vnd.google-apps.document" }).execute()
 	def _gdoc_to_pdf(self, gdoc):
-		return self.service.files().export(fileId=gdoc["id"], mimeType='application/pdf').execute()
+		try:
+			return self.service.files().export(fileId=gdoc["id"], mimeType='application/pdf').execute()
+		except HttpError:
+			print("Export failed, retrying...")
+			self._gdoc_to_pdf(gdoc)
 
 	def get_file_as_pdf(self, file):
 		return self._gdoc_to_pdf(self._file_to_gdoc(file))

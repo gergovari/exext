@@ -53,12 +53,19 @@ class ExerciseExtractor:
 					current += 1
 
 	def _find_top_y_coord(self, page):
-		obj = page.extract_words()[0]
-		return obj["top"]
+		try:
+			obj = page.extract_words()[0]
+			return obj["top"]
+		except IndexError:
+			return None
+			
 
 	def _find_bottom_y_coord(self, page):
-		obj = page.extract_words()[-1]
-		return obj["bottom"]
+		try:
+			obj = page.extract_words()[-1]
+			return obj["bottom"]
+		except IndexError:
+			return None
 
 	def _crop_page(self, page, start, end, offset_override = (None, None)):
 		try:
@@ -70,58 +77,72 @@ class ExerciseExtractor:
 			start = 0
 		if end > page.height:
 			end = page.height
-		return page.crop((0, start, page.width, end))
+		try:
+			return page.crop((0, start, page.width, end))
+		except:
+			raise ExtractionError
+	def _crop_all(self, page):
+		return self._crop_page(page, self._find_top_y_coord(page), self._find_bottom_y_coord(page))
 
 	def _get_all_exercises(self, pdf, include_title = False):
 		exercises = []
 		overflow = None
 		for i, page in enumerate(pdf.pages):
-			matches = re.findall(self.regex, page.extract_text())
+			page_text = page.extract_text()
+			if len(page.extract_words()) > 0:
+				matches = re.findall(self.regex, page_text)
 
-			if i == 0 and include_title:
-				try:
-					title = re.findall(self.title_regex, page.extract_text())[0]
-					exercises.append(
-						Exercise(
-							(0, self._find_text_y_coord(page, title, 0, True)), 
-							(0, self._find_text_y_coord(page, matches[0])),
-							True
+				if i == 0 and include_title:
+					try:
+						title = re.findall(self.title_regex, page_text)[0]
+						exercises.append(
+							Exercise(
+								(0, self._find_text_y_coord(page, title, 0, True)), 
+								(0, self._find_text_y_coord(page, matches[0])),
+								True
+							)
 						)
-					)
-				except IndexError:
-					pass
+					except IndexError:
+						pass
 
-			if overflow:
-				if len(matches) <= 0:
-					overflow.end = (i, 
-						self._find_bottom_y_coord(page))
-					if len(pdf.pages) <= i + 1:
+				if overflow:
+					if len(matches) <= 0:
+						overflow.end = (i, 
+							self._find_bottom_y_coord(page))
+						if len(pdf.pages) <= i + 1:
+							exercises.append(overflow)
+							overflow = None
+					elif matches[0] in page.extract_words()[0]["text"]:
 						exercises.append(overflow)
 						overflow = None
-				elif matches[0] in page.extract_words()[0]["text"]:
-					exercises.append(overflow)
-					overflow = None
 
-			for j, text in enumerate(matches):
-				if not text in self.occurence:
-					self.occurence[text] = 0
-				y = self._find_text_y_coord(page, text, self.occurence[text])
-				if y:
-					start = (i, y)
-					exercise = Exercise(start, None)
+				for j, text in enumerate(matches):
+					if not text in self.occurence:
+						self.occurence[text] = 0
+					y = self._find_text_y_coord(page, text, self.occurence[text])
+					if y:
+						start = (i, y)
+						exercise = Exercise(start, None)
 
-					if len(matches) <= j + 1:
-						exercise.end = (i, self._find_bottom_y_coord(page))
-						if len(pdf.pages) <= i + 1:
-							exercises.append(exercise)
+						if len(matches) <= j + 1:
+							exercise.end = (i, self._find_bottom_y_coord(page))
+							if len(pdf.pages) <= i + 1:
+								exercises.append(exercise)
+							else:
+								overflow = exercise
 						else:
-							overflow = exercise
-					else:
-						if matches[j] == matches[j + 1]:
-							self.occurence[text] += 1
-						exercise.end = (i, self._find_text_y_coord(page, 
-							matches[j + 1], self.occurence[text]))
-						exercises.append(exercise)
+							if matches[j] == matches[j + 1]:
+								self.occurence[text] += 1
+							exercise.end = (i, self._find_text_y_coord(page, 
+								matches[j + 1], self.occurence[text]))
+							exercises.append(exercise)
+		return exercises
+
+	def _extract_all_pages(self, pdf):
+		exercises = []
+		for page in pdf.pages:
+			exercise = Exercise(None, None, False, self._crop_all(page).to_image(resolution=self.quality).original)
+			exercises.append(exercise)
 		return exercises
 
 	def extract(self, pdf, exercise):
@@ -147,12 +168,20 @@ class ExerciseExtractor:
 	
 	def extract_all(self, paths, include_titles = False):
 		exercises = []
-		for path in paths:
+		for i, path in enumerate(paths):
+			print()
+			print()
+			print(f"Opening PDF: {i+1}/{len(paths)} ({round(((i+1)/len(paths))*100, 2)}%): {path}")
 			with pdfplumber.open(path) as pdf:
 				raw_exercises = self._get_all_exercises(pdf, include_titles)
-				for i, raw_exercise in enumerate(raw_exercises):
+				for j, raw_exercise in enumerate(raw_exercises):
 					try:
 						exercises.append(self.extract(pdf, raw_exercise))
+						print(f"Extracted exercise: {j+1}/{len(raw_exercises)} ({round(((j+1)/len(raw_exercises))*100, 2)}%)")
 					except ExtractionError:
-						print(f"Extraction error: {pdf.pages[0].extract_text()[:100]}")
+						print()
+						print(f"Extraction error at {j}: {pdf.metadata['Title']}")
+						print()
+				if len(exercises) <= 0:
+					exercises += self._extract_all_pages(pdf)
 		return exercises

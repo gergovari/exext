@@ -14,7 +14,7 @@ class ClassroomHandler:
 
 	def get_assignments(self, course):
 		assignments = []
-		request = self.service.courses().courseWork().list(courseId = course["id"], pageSize = self.google.page_size)
+		request = self.service.courses().courseWork().list(courseId = course["id"], pageSize = self.google.page_size, orderBy = "updateTime asc")
 		while request:
 			response = request.execute()
 			assignments += response.get("courseWork", [])
