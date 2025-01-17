@@ -8,6 +8,9 @@ class ExerciseMerger:
 		c.drawImage(ImageReader(image), 
 			0, y, c._pagesize[0], height)
 	
+	def _crop_to_pages(self, size, image):
+		pass # TODO: implement
+
 	def practice(self, path, images):
 		c = canvas.Canvas(path)
 		bg = ImageReader(Image.open("bg.jpg"))
@@ -24,8 +27,11 @@ class ExerciseMerger:
 			height = image.size[1] * (c._pagesize[1]/image.size[0])
 			total_height += height
 			if total_height > c._pagesize[1]:
-				total_height = 0
-				# TODO: if exercise bigger than a WHOLE page...
+				total_height = height
 				c.showPage()
-			self._draw_exercise(c, image, c._pagesize[1] - total_height)
+			if height > c._pagesize[1]:
+				c.showPage()
+				images += _crop_to_pages(c._pagesize[1], image)
+			else:
+				self._draw_exercise(c, image, c._pagesize[1] - total_height)
 		return c
